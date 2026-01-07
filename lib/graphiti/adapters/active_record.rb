@@ -14,31 +14,28 @@ module Graphiti
           belongs_to: Graphiti::Adapters::ActiveRecord::BelongsToSideload,
           many_to_many: Graphiti::Adapters::ActiveRecord::ManyToManySideload
         }
+      def close
+        if ::ActiveRecord.version > Gem::Version.new("7.1")
+          ::ActiveRecord::Base.connection_handler.clear_active_connections!
+        else
+          ::ActiveRecord::Base.clear_active_connections!
+        end
       end
 
-      def filter_eq(scope, attribute, value)
-        scope.where(attribute => value)
+      def can_group?
+        true
       end
-      alias_method :filter_integer_eq, :filter_eq
-      alias_method :filter_float_eq, :filter_eq
-      alias_method :filter_big_decimal_eq, :filter_eq
-      alias_method :filter_date_eq, :filter_eq
-      alias_method :filter_boolean_eq, :filter_eq
-      alias_method :filter_uuid_eq, :filter_eq
-      alias_method :filter_enum_eq, :filter_eq
-      alias_method :filter_enum_eql, :filter_eq
 
-      def filter_not_eq(scope, attribute, value)
-        scope.where.not(attribute => value)
+      def group(scope, attribute)
+        scope.group(attribute)
       end
-      alias_method :filter_integer_not_eq, :filter_not_eq
-      alias_method :filter_float_not_eq, :filter_not_eq
-      alias_method :filter_big_decimal_not_eq, :filter_not_eq
-      alias_method :filter_date_not_eq, :filter_not_eq
-      alias_method :filter_boolean_not_eq, :filter_not_eq
-      alias_method :filter_uuid_not_eq, :filter_not_eq
-      alias_method :filter_enum_not_eq, :filter_not_eq
-      alias_method :filter_enum_not_eql, :filter_not_eq
+
+      private
+
+      def column_for(scope, name)
+        table = scope.klass.arel_table
+        if (other = scope.attribute_alias(name))
+          table[other]
 
       def filter_string_eq(scope, attribute, value, is_not: false)
         column = column_for(scope, attribute)
@@ -309,6 +306,7 @@ module Graphiti
         else
           ::ActiveRecord::Base.clear_active_connections!
         end
+<<<<<<< HEAD
       end
 
       def can_group?
@@ -317,6 +315,8 @@ module Graphiti
 
       def group(scope, attribute)
         scope.group(attribute)
+=======
+>>>>>>> e35d1ef (Update ActiveRecord adapter w/ support for Rails 7.2+)
       end
 
       private
