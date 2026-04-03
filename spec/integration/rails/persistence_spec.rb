@@ -1704,70 +1704,70 @@ if ENV["APPRAISAL_INITIALIZED"]
         expect { make_request }.to change { employee.positions.count }.by(-1)
       end
     end
-  end
 
-  describe "nullification" do
-    subject(:make_request) { do_update(payload) }
+    describe "nullification" do
+      subject(:make_request) { do_update(payload) }
 
-    describe "belongs_to: data: null clears the foreign key" do
-      let!(:classification) { Classification.create!(description: "senior") }
-      let!(:employee) { Employee.create!(first_name: "Joe", classification_id: classification.id) }
+      describe "belongs_to: data: null clears the foreign key" do
+        let!(:classification) { Classification.create!(description: "senior") }
+        let!(:employee) { Employee.create!(first_name: "Joe", classification_id: classification.id) }
 
-      let(:payload) do
-        {
-          data: {
-            type: "employees",
-            id: employee.id.to_s,
-            relationships: {
-              classification: {data: nil}
+        let(:payload) do
+          {
+            data: {
+              type: "employees",
+              id: employee.id.to_s,
+              relationships: {
+                classification: {data: nil}
+              }
             }
           }
-        }
-      end
+        end
 
-      before do
-        allow(controller).to receive(:resource) do
-          klass = Class.new(EmployeeResource) { self.validate_endpoints = false }
-          klass.belongs_to :classification, resource: ClassificationResource
-          klass
+        before do
+          allow(controller).to receive(:resource) do
+            klass = Class.new(EmployeeResource) { self.validate_endpoints = false }
+            klass.belongs_to :classification, resource: ClassificationResource
+            klass
+          end
+        end
+
+        it "nullifies the belongs_to foreign key on the resource" do
+          make_request
+          expect(employee.reload.classification_id).to be_nil
         end
       end
 
-      it "nullifies the belongs_to foreign key on the resource" do
-        make_request
-        expect(employee.reload.classification_id).to be_nil
-      end
-    end
+      describe "has_many: data: null clears the foreign key on all children" do
+        let!(:employee) { Employee.create!(first_name: "Jane") }
+        let!(:position1) { Position.create!(title: "Dev", employee_id: employee.id) }
+        let!(:position2) { Position.create!(title: "QA", employee_id: employee.id) }
 
-    describe "has_many: data: null clears the foreign key on all children" do
-      let!(:employee) { Employee.create!(first_name: "Jane") }
-      let!(:position1) { Position.create!(title: "Dev", employee_id: employee.id) }
-      let!(:position2) { Position.create!(title: "QA", employee_id: employee.id) }
-
-      let(:payload) do
-        {
-          data: {
-            type: "employees",
-            id: employee.id.to_s,
-            relationships: {
-              positions: {data: nil}
+        let(:payload) do
+          {
+            data: {
+              type: "employees",
+              id: employee.id.to_s,
+              relationships: {
+                positions: {data: nil}
+              }
             }
           }
-        }
-      end
-
-      before do
-        allow(controller).to receive(:resource) do
-          klass = Class.new(EmployeeResource) { self.validate_endpoints = false }
-          klass.has_many :positions, resource: PositionResource
-          klass
         end
-      end
 
-      it "nullifies the foreign key on all child records" do
-        make_request
-        expect(position1.reload.employee_id).to be_nil
-        expect(position2.reload.employee_id).to be_nil
+        before do
+          allow(controller).to receive(:resource) do
+            klass = Class.new(EmployeeResource) { self.validate_endpoints = false }
+            klass.has_many :positions, resource: PositionResource
+            klass
+          end
+        end
+
+        it "nullifies the foreign key on all child records" do
+          make_request
+          expect(position1.reload.employee_id).to be_nil
+          expect(position2.reload.employee_id).to be_nil
+        end
       end
     end
   end
