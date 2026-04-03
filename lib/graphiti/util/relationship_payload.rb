@@ -19,7 +19,7 @@ module Graphiti
       # And hash format (current): { relationship_types: [...], method_types: [...] }
       def self.normalize_filter_param(param)
         return {} if param.nil? || param.empty?
-        return { relationship_types: Array(param) } if param.is_a?(Array)
+        return {relationship_types: Array(param)} if param.is_a?(Array)
         param
       end
 
@@ -40,10 +40,8 @@ module Graphiti
                     yield payload_for(sl, rp)
                   end
                 end
-              else
-                if should_yield_method_type?(relationship_payload.fetch(:meta, {})[:method] || :update)
-                  yield payload_for(sl, relationship_payload)
-                end
+              elsif should_yield_method_type?(relationship_payload.fetch(:meta, {})[:method] || :update)
+                yield payload_for(sl, relationship_payload)
               end
             end
           end
@@ -109,18 +107,18 @@ module Graphiti
           end
 
           relationship_payload[:meta][:method] ||= :update
-
-          {
-            resource: resource,
-            sideload: sideload,
-            is_polymorphic: sideload.polymorphic_child?,
-            primary_key: sideload.primary_key,
-            foreign_key: sideload.foreign_key,
-            attributes: relationship_payload[:attributes],
-            meta: relationship_payload[:meta],
-            relationships: relationship_payload[:relationships]
-          }
         end
+
+        {
+          resource: resource,
+          sideload: sideload,
+          is_polymorphic: sideload.polymorphic_child?,
+          primary_key: sideload.primary_key,
+          foreign_key: sideload.foreign_key,
+          attributes: relationship_payload[:attributes],
+          meta: relationship_payload[:meta],
+          relationships: relationship_payload[:relationships]
+        }
       end
     end
   end

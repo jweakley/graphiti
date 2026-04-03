@@ -146,7 +146,7 @@ class Graphiti::Deserializer
 
         if relationship_payload[:data]
           hash[name] = process_relationship(relationship_payload[:data])
-        elsif relationship_payload.key?(:data) && relationship_payload[:data] == nil
+        elsif relationship_payload.key?(:data) && relationship_payload[:data].nil?
           hash[name] = {
             meta: {
               method: :nullify

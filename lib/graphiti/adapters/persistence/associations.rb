@@ -3,13 +3,13 @@ module Graphiti
     module Persistence
       module Associations
         def process_nullified_belongs_to_associations(persistence, attributes)
-          persistence.iterate(only: { relationship_types: [:polymorphic_belongs_to, :belongs_to], method_types: [:nullify] }) do |x|
+          persistence.iterate(only: {relationship_types: [:polymorphic_belongs_to, :belongs_to], method_types: [:nullify]}) do |x|
             update_foreign_key(persistence, attributes, x)
           end
         end
 
         def process_nullified_has_many_associations(persistence, caller_model)
-          persistence.iterate(only: { method_types: [:nullify] }, except: { relationship_types: [:polymorphic_belongs_to, :belongs_to] }) do |x|
+          persistence.iterate(only: {method_types: [:nullify]}, except: {relationship_types: [:polymorphic_belongs_to, :belongs_to]}) do |x|
             nullify_has_many_association(x[:sideload], caller_model)
           end
         end
@@ -28,25 +28,22 @@ module Graphiti
         end
 
         def process_belongs_to(persistence, attributes)
-
           parents = [].tap do |processed|
-            persistence.iterate(only: { relationship_types: [:polymorphic_belongs_to, :belongs_to] }, except: { method_types: [:nullify] }) do |x|
-              begin
-                id = x.dig(:attributes, :id)
-                x[:object] = x[:resource]
-                  .persist_with_relationships(x[:meta], x[:attributes], x[:relationships])
+            persistence.iterate(only: {relationship_types: [:polymorphic_belongs_to, :belongs_to]}, except: {method_types: [:nullify]}) do |x|
+              id = x.dig(:attributes, :id)
+              x[:object] = x[:resource]
+                .persist_with_relationships(x[:meta], x[:attributes], x[:relationships])
+              processed << x
+            rescue Graphiti::Errors::RecordNotFound
+              if Graphiti.config.raise_on_missing_sidepost
+                path = "relationships/#{x.dig(:meta, :jsonapi_type)}"
+                raise Graphiti::Errors::RecordNotFound.new(x[:sideload].name, id, path)
+              else
+                pointer = "data/relationships/#{x.dig(:meta, :jsonapi_type)}"
+                object = Graphiti::Errors::NullRelation.new(id.to_s, pointer)
+                object.errors.add(:base, :not_found, message: "could not be found")
+                x[:object] = object
                 processed << x
-              rescue Graphiti::Errors::RecordNotFound
-                if Graphiti.config.raise_on_missing_sidepost
-                  path = "relationships/#{x.dig(:meta, :jsonapi_type)}"
-                  raise Graphiti::Errors::RecordNotFound.new(x[:sideload].name, id, path)
-                else
-                  pointer = "data/relationships/#{x.dig(:meta, :jsonapi_type)}"
-                  object = Graphiti::Errors::NullRelation.new(id.to_s, pointer)
-                  object.errors.add(:base, :not_found, message: "could not be found")
-                  x[:object] = object
-                  processed << x
-                end
               end
             end
           end
@@ -57,7 +54,7 @@ module Graphiti
 
         def process_has_many(persistence, caller_model)
           [].tap do |processed|
-            persistence.iterate(except: { relationship_types: [:polymorphic_belongs_to, :belongs_to], method_types: [:nullify] }) do |x|
+            persistence.iterate(except: {relationship_types: [:polymorphic_belongs_to, :belongs_to], method_types: [:nullify]}) do |x|
               update_foreign_key(caller_model, x[:attributes], x)
 
               x[:object] = x[:resource]

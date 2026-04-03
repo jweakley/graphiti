@@ -19,7 +19,7 @@ RSpec.describe "Nullification feature" do
           type: "positions",
           id: position.id.to_s,
           relationships: {
-            department: { data: nil }
+            department: {data: nil}
           }
         }
       }
@@ -43,7 +43,7 @@ RSpec.describe "Nullification feature" do
           type: "employees",
           id: employee.id.to_s,
           relationships: {
-            positions: { data: nil }
+            positions: {data: nil}
           }
         }
       }
