@@ -9,58 +9,21 @@ module Graphiti
         end
 
         def process_nullified_has_many_associations(persistence, caller_model)
-          [].tap do |processed|
-            persistence.iterate(only: { method_types: [:nullify] }, except: { relationship_types: [:polymorphic_belongs_to, :belongs_to] }) do |x|
-              update_foreign_key(caller_model, x[:attributes], x)
+          persistence.iterate(only: { method_types: [:nullify] }, except: { relationship_types: [:polymorphic_belongs_to, :belongs_to] }) do |x|
+            nullify_has_many_association(x[:sideload], caller_model)
+          end
+        end
 
-              # Find the actual model instance and save the nullification
-              model_instance = x[:resource].find(x[:attributes][:id]) if x[:attributes][:id]
-              if model_instance
-                x[:attributes].each do |k, v|
-                  setter = "#{k}="
-                  if model_instance.respond_to?(setter)
-                    model_instance.send(setter, v)
-                  else
-                    raise NoMethodError, "[Graphiti] Error: #{model_instance.class} does not respond to #{setter} while nullifying relationship."
-                  end
-                end
-                model_instance.save
-              end
-
-              # Nullify all related child records by updating PORO::DB.data directly
-              if x[:foreign_key] && caller_model && x[:resource].model && PORO::DB.data[x[:resource].model.type]
-                PORO::DB.data[x[:resource].model.type].each do |attrs|
-                  if attrs[x[:foreign_key]] == caller_model.id
-                    attrs[x[:foreign_key]] = nil
-                  end
-                end
-              end
-
-              x[:object] = x[:resource]
-                .persist_with_relationships(x[:meta], x[:attributes], x[:relationships], caller_model, x[:foreign_key])
-
-              processed << x
-              update_foreign_key(caller_model, x[:attributes], x)
-
-              # Find and update the actual model instance for nullification
-              if x[:attributes][:id]
-                model_instance = x[:resource].find(x[:attributes][:id])
-                if model_instance && x[:foreign_key]
-                  setter = "#{x[:foreign_key]}="
-                  if model_instance.respond_to?(setter)
-                    model_instance.send(setter, nil)
-                  else
-                    raise NoMethodError, "[Graphiti] Error: #{model_instance.class} does not respond to #{setter} while nullifying relationship."
-                  end
-                  model_instance.save
-                end
-              end
-
-              x[:object] = x[:resource]
-                .persist_with_relationships(x[:meta], x[:attributes], x[:relationships], caller_model, x[:foreign_key])
-
-              processed << x
-            end
+        def nullify_has_many_association(sideload, caller_model)
+          child_resource = sideload.resource
+          child_adapter = child_resource.adapter
+          fk = sideload.foreign_key
+          pk_value = caller_model.send(sideload.primary_key)
+          scope = child_resource.base_scope
+          scope = child_adapter.filter_integer_eq(scope, fk, pk_value)
+          child_adapter.resolve(scope).each do |child|
+            child_adapter.assign_attributes(child, {fk => nil})
+            child_adapter.save(child)
           end
         end
 
