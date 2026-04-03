@@ -6,17 +6,28 @@ module Graphiti
       attr_reader :resource, :payload
 
       def self.iterate(resource:, relationships: {}, only: {}, except: {})
+        only = normalize_filter_param(only)
+        except = normalize_filter_param(except)
         instance = new(resource, relationships, only: only, except: except)
         instance.iterate do |sideload, relationship_data, sub_relationships|
           yield sideload, relationship_data, sub_relationships
         end
       end
 
+      # Normalize only/except parameters for backward compatibility
+      # Accepts both array format (legacy): [:has_many, :many_to_many]
+      # And hash format (current): { relationship_types: [...], method_types: [...] }
+      def self.normalize_filter_param(param)
+        return {} if param.nil? || param.empty?
+        return { relationship_types: Array(param) } if param.is_a?(Array)
+        param
+      end
+
       def initialize(resource, payload, only: {}, except: {})
         @resource = resource
         @payload = payload
-        @only = only
-        @except = except
+        @only = self.class.normalize_filter_param(only)
+        @except = self.class.normalize_filter_param(except)
       end
 
       def iterate
